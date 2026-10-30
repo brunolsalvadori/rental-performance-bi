@@ -23,7 +23,9 @@ The operation grew from one cabin to a multi-unit business, with construction fi
 
 ## The dashboard
 
-A single static page with two views and a unit filter (All units, Cabin, Chalet A). Every KPI recalculates in the browser when the filter changes. Open [dashboard/index.html](dashboard/index.html) locally, or rebuild it with the commands in [Reproduce](#reproduce-the-data-and-the-dashboard).
+**[Open the live demo](https://brunolsalvadori.github.io/rental-performance-bi/dashboard/)**
+
+A single static page with two views and a unit filter (All units, Cabin, Chalet A). Every KPI recalculates in the browser when the filter changes. The source is [dashboard/index.html](dashboard/index.html); rebuild it with the commands in [Reproduce](#reproduce-the-data-and-the-dashboard).
 
 **Financial view:** profitability, demand and pricing, channels, construction loan and partner balances.
 
@@ -93,7 +95,7 @@ The [prompts/](prompts/) folder documents that process step by step: the goal of
 ## Roadmap
 
 - [x] Dashboard demo on the synthetic data
-- [ ] Host the demo on GitHub Pages so it opens from a link
+- [x] Host the demo on GitHub Pages so it opens from a link
 - [ ] Classify review themes with an LLM instead of fixed labels, with a human-reviewed sample to measure accuracy
 - [ ] Occupancy forecast by month to support pricing decisions
 - [ ] Alerts when a sub-score or response time drops below a threshold
