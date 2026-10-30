@@ -21,6 +21,24 @@ The operation grew from one cabin to a multi-unit business, with construction fi
 | Manager | Where do guests rate us lower, and what do they talk about? | Guest experience |
 | Manager | Are we fast enough answering guests? | Guest experience |
 
+## The dashboard
+
+A single static page with two views and a unit filter (All units, Cabin, Chalet A). Every KPI recalculates in the browser when the filter changes. Open [dashboard/index.html](dashboard/index.html) locally, or rebuild it with the commands in [Reproduce](#reproduce-the-data-and-the-dashboard).
+
+**Financial view:** profitability, demand and pricing, channels, construction loan and partner balances.
+
+![Financial view of the dashboard, all units](docs/screenshots/financial-view.png)
+
+**Guest experience view:** ratings, sub-scores, review themes and booking behaviour.
+
+![Guest experience view of the dashboard](docs/screenshots/guest-experience-view.png)
+
+**Unit filter:** the same financial view for Chalet A only, the unit with construction financing, where debt service coverage is the number that matters.
+
+![Financial view filtered to Chalet A](docs/screenshots/financial-chalet-a.png)
+
+The visual design comes from the real dashboard I built for the operation. Only the data was replaced: no real figures, names, reviews or listing details are published here.
+
 ## Data model
 
 Five tables, joined by `unit`, `booking_id` and month. Full definitions in [docs/data-dictionary.md](docs/data-dictionary.md).
@@ -63,16 +81,27 @@ The [prompts/](prompts/) folder documents that process step by step: the goal of
 
 **Stack:** Python (standard library) for data generation · HTML, CSS, JavaScript for the dashboard.
 
+## Repository structure
+
+    data/generate_synthetic_data.py   synthetic data generator (fixed seed)
+    dashboard/build_dashboard.py      embeds the synthetic CSVs into the page
+    dashboard/template.html           dashboard layout, KPI logic and charts
+    dashboard/index.html              built dashboard, open in any browser
+    docs/                             data dictionary, KPI definitions, screenshots
+    prompts/                          AI prompt log: goal, prompt, output, decision
+
 ## Roadmap
 
-- [ ] Public dashboard demo on the synthetic data
+- [x] Dashboard demo on the synthetic data
+- [ ] Host the demo on GitHub Pages so it opens from a link
 - [ ] Classify review themes with an LLM instead of fixed labels, with a human-reviewed sample to measure accuracy
 - [ ] Occupancy forecast by month to support pricing decisions
 - [ ] Alerts when a sub-score or response time drops below a threshold
 - [ ] Scenario view: impact of a new unit on NOI and debt coverage
 
-## Reproduce the data
+## Reproduce the data and the dashboard
 
     python data/generate_synthetic_data.py
+    python dashboard/build_dashboard.py
 
-No dependencies beyond Python 3. A fixed seed makes the output identical on every run.
+No dependencies beyond Python 3. A fixed seed makes the output identical on every run, so the rebuilt dashboard matches the screenshots.

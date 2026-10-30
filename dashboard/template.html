@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serra Cabins Co. — Rental Performance BI</title>
+<meta name="description" content="Product case demo: financial and guest experience BI for a small short-term rental operation, on fully synthetic data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --forest:#1F3328; --forest-deep:#16241C;
+    --moss:#2B4436; --moss-2:#33503F;
+    --line:#3D5A48;
+    --ink:#EFE6D3; --ink-2:#C9C0AC; --ink-3:#9FA893;
+    --accent:#E0A94E;
+    /* categorical series, validated (OKLCH L 0.665) against the card surface */
+    --s1:#BF881E; --s2:#449ECD; --s3:#E06D51;
+    --radius:14px;
+    --serif:'Fraunces', Georgia, serif;
+    --sans:'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(ellipse at top left, #24392C 0%, var(--forest) 45%, #172720 100%);
+    background-color: var(--forest);
+    color:var(--ink); font-family:var(--sans); min-height:100vh; padding-bottom:60px;
+  }
+  .wrap{max-width:1240px; margin:0 auto; padding:0 20px;}
+
+  /* hero */
+  .hero{position:relative; overflow:hidden; border-bottom:1px solid var(--line);}
+  .hero svg{display:block; width:100%; height:auto; min-height:170px;}
+  .hero-overlay{position:absolute; inset:0; display:flex; align-items:flex-end;}
+  .hero-content{display:flex; align-items:center; gap:18px; padding:22px 20px 24px; max-width:1240px; margin:0 auto; width:100%;}
+  .monogram{width:58px; height:58px; border-radius:14px; background:rgba(22,36,28,.6); border:1px solid rgba(239,230,211,.25);
+    display:flex; align-items:center; justify-content:center; font-family:var(--serif); font-size:24px; font-weight:600; color:var(--accent); flex-shrink:0;}
+  .hero h1{font-family:var(--serif); font-weight:600; font-size:30px; margin:0; text-shadow:0 2px 12px rgba(0,0,0,.45);}
+  .hero p{margin:3px 0 0; font-size:12.5px; letter-spacing:1.8px; text-transform:uppercase; color:var(--accent); font-weight:600; text-shadow:0 2px 8px rgba(0,0,0,.5);}
+  .hero-period{margin-left:auto; text-align:right; font-family:var(--mono); font-size:12.5px; color:var(--ink-2); line-height:1.6; text-shadow:0 2px 8px rgba(0,0,0,.5);}
+  .hero-period strong{color:var(--ink);}
+  @media (max-width:700px){ .hero svg{position:absolute; inset:0; height:100%; min-height:0;} .hero-overlay{position:relative;} .hero-content{flex-wrap:wrap; padding-top:70px;} .hero-period{margin-left:0; text-align:left;} .hero h1{font-size:24px;} .hero p{font-size:11px; letter-spacing:1.2px;} }
+
+  .synthetic-note{margin:18px 0 0; padding:10px 14px; border:1px dashed var(--line); border-radius:10px; font-size:12.5px; color:var(--ink-2); line-height:1.5;}
+  .synthetic-note strong{color:var(--ink);}
+
+  /* controls */
+  .controls{display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin:18px 0 6px;}
+  .seg{display:inline-flex; background:var(--forest-deep); border:1px solid var(--line); border-radius:10px; padding:3px; gap:3px;}
+  .seg button{font:600 13px var(--sans); color:var(--ink-2); background:transparent; border:0; border-radius:7px; padding:8px 14px; cursor:pointer;}
+  .seg button[aria-pressed="true"], .seg button[aria-selected="true"]{background:var(--moss-2); color:var(--ink);}
+  .seg button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  .ctl-label{font-size:11.5px; text-transform:uppercase; letter-spacing:1.2px; color:var(--ink-3); font-weight:600; margin-right:8px;}
+
+  /* kpis */
+  .kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:18px 0 8px;}
+  .kpi{background:linear-gradient(155deg, var(--moss) 0%, #263C2F 100%); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px;}
+  .kpi .label{font-size:11.5px; text-transform:uppercase; letter-spacing:1.1px; color:var(--ink-2); font-weight:600;}
+  .kpi .value{font-family:var(--mono); font-size:24px; font-weight:600; margin-top:8px; color:var(--ink);}
+  .kpi .sub{font-size:12px; color:var(--ink-2); margin-top:6px; line-height:1.4;}
+  @media (max-width:900px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+
+  /* sections & cards */
+  .section-head{display:flex; align-items:baseline; gap:12px; margin:34px 0 14px; padding-bottom:10px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  .section-head .num{font-family:var(--serif); font-size:13px; color:var(--forest); background:var(--accent); width:26px; height:26px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0;}
+  .section-head h2{font-family:var(--serif); font-size:21px; font-weight:600; margin:0;}
+  .section-head .sub{font-size:12.5px; color:var(--ink-2);}
+  .card{background:var(--moss); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; min-width:0;}
+  .card h3{font-size:13.5px; font-weight:600; margin:0 0 4px; color:var(--ink);}
+  .card .question{font-size:12px; color:var(--ink-3); margin:0 0 12px;}
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;}
+  @media (max-width:900px){ .grid-2{grid-template-columns:1fr;} }
+  .chart{width:100%;}
+  .chart svg{display:block; width:100%; height:auto; overflow:visible;}
+  .legend{display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-2); margin:2px 0 8px;}
+  .legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px;}
+  .footnote{font-size:11.5px; color:var(--ink-3); margin-top:10px; line-height:1.5;}
+  .muted{color:var(--ink-3);}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{text-align:left; color:var(--ink-2); text-transform:uppercase; font-size:11px; letter-spacing:.6px; font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line);}
+  td{padding:7px 10px; border-bottom:1px solid rgba(239,230,211,.06);}
+  td.num, th.num{text-align:right; font-family:var(--mono);}
+  .table-scroll{overflow-x:auto;}
+  details summary{cursor:pointer; font-size:12.5px; color:var(--ink-2); margin-top:12px;}
+  details[open] summary{margin-bottom:8px;}
+
+  .progress{height:12px; background:var(--forest-deep); border-radius:20px; overflow:hidden; margin:10px 0 14px;}
+  .progress > div{height:100%; background:var(--s1); border-radius:20px;}
+  .row{display:flex; justify-content:space-between; font-size:13px; padding:7px 0; border-top:1px solid var(--line);}
+  .row span:last-child{font-family:var(--mono);}
+  .empty{font-size:13px; color:var(--ink-2); padding:24px 0; text-align:center;}
+
+  .chip{display:inline-flex; gap:6px; align-items:center; font-size:12.5px; padding:5px 11px; background:var(--moss-2); border:1px solid var(--line); border-radius:20px; margin:0 6px 6px 0;}
+  .chip b{font-family:var(--mono); color:var(--ink);}
+
+  #tip{position:fixed; pointer-events:none; z-index:10; background:var(--forest-deep); border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+    font-size:12px; line-height:1.5; color:var(--ink); box-shadow:0 6px 20px rgba(0,0,0,.35); opacity:0; transition:opacity .08s; max-width:260px;}
+  #tip .t{font-weight:600; margin-bottom:2px;}
+  #tip .r{display:flex; gap:10px; justify-content:space-between;}
+  #tip .r span:last-child{font-family:var(--mono);}
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <svg viewBox="0 0 1200 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#16241C"/><stop offset="55%" stop-color="#2B4436"/><stop offset="100%" stop-color="#8C5A3A"/>
+      </linearGradient>
+      <radialGradient id="sun" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#F3D28A"/><stop offset="100%" stop-color="#E0A94E" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="1200" height="260" fill="url(#sky)"/>
+    <circle cx="960" cy="62" r="80" fill="url(#sun)"/><circle cx="960" cy="62" r="28" fill="#F3D28A" opacity=".85"/>
+    <path d="M0 160 L120 105 L230 150 L340 90 L460 155 L600 100 L760 160 L900 110 L1050 150 L1200 118 L1200 260 L0 260 Z" fill="#24392C" opacity=".85"/>
+    <path d="M0 200 L150 140 L280 188 L420 128 L560 194 L720 138 L880 198 L1020 148 L1200 184 L1200 260 L0 260 Z" fill="#1B2C22"/>
+    <g fill="#16241C">
+      <path d="M90 228 L102 195 L114 228 Z"/><path d="M130 232 L145 190 L160 232 Z"/>
+      <path d="M1080 230 L1093 192 L1106 230 Z"/><path d="M1130 234 L1146 188 L1162 234 Z"/>
+    </g>
+    <g transform="translate(470,166)">
+      <polygon points="0,50 76,50 76,16 38,-20 0,16" fill="#5B3A24"/>
+      <polygon points="-8,18 38,-26 84,18 84,8 38,-34 -8,8" fill="#3B271A"/>
+      <rect x="46" y="22" width="15" height="13" fill="#E0A94E" opacity=".9"/>
+    </g>
+    <g transform="translate(640,172)">
+      <polygon points="0,44 64,44 64,14 32,-14 0,14" fill="#4A3020"/>
+      <polygon points="-6,16 32,-20 70,16 70,7 32,-27 -6,7" fill="#2F2015"/>
+      <rect x="12" y="20" width="12" height="11" fill="#E0A94E" opacity=".8"/>
+    </g>
+    <path d="M0 238 L200 222 L400 242 L650 216 L900 240 L1200 226 L1200 260 L0 260 Z" fill="#132019"/>
+  </svg>
+  <div class="hero-overlay">
+    <div class="hero-content">
+      <div class="monogram" aria-hidden="true">SC</div>
+      <div>
+        <h1 id="companyName">Serra Cabins Co.</h1>
+        <p>Rental Performance BI · Product case demo</p>
+      </div>
+      <div class="hero-period">Period<br><strong id="periodLabel">—</strong></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="synthetic-note"><strong>Synthetic data.</strong> Serra Cabins Co. is a fictional company. Every figure on this page is generated by
+    <code>data/generate_synthetic_data.py</code> and does not represent any real business.</p>
+
+  <div class="controls">
+    <div class="seg" role="tablist" aria-label="View">
+      <button role="tab" aria-selected="true" data-view="financial">Financial</button>
+      <button role="tab" aria-selected="false" data-view="guest">Guest experience</button>
+    </div>
+    <div>
+      <span class="ctl-label">Unit</span>
+      <div class="seg" id="unitFilter" aria-label="Unit filter"></div>
+    </div>
+  </div>
+
+  <!-- ======================= FINANCIAL ======================= -->
+  <section id="view-financial">
+    <div class="kpi-grid" id="finKpis"></div>
+
+    <div class="section-head"><span class="num">1</span><h2>Profitability</h2><span class="sub">Is each unit profitable after costs?</span></div>
+    <div class="card">
+      <h3>Net revenue and operating costs by month</h3>
+      <p class="question">Net revenue is after channel fees, by check-in month. Costs exclude loan installments.</p>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Net revenue</span><span><i style="background:var(--s3)"></i>Operating costs</span></div>
+      <div class="chart" id="chRevCost"></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>NOI margin by month</h3>
+        <p class="question">NOI ÷ net revenue. Low months show where fixed costs outweigh demand.</p>
+        <div class="chart" id="chMargin"></div>
+      </div>
+      <div class="card">
+        <h3>Operating costs by category</h3>
+        <p class="question">Where the money goes, whole period.</p>
+        <div class="chart" id="chCostCat"></div>
+      </div>
+    </div>
+
+    <div class="section-head"><span class="num">2</span><h2>Demand and pricing</h2><span class="sub">How do occupancy and nightly rate move by season?</span></div>
+    <div class="grid-2" style="margin-top:0;">
+      <div class="card">
+        <h3>Occupancy rate by month</h3>
+        <p class="question">Nights sold ÷ nights available while the unit was open.</p>
+        <div class="chart" id="chOcc"></div>
+      </div>
+      <div class="card">
+        <h3>ADR by month</h3>
+        <p class="question">Lodging revenue ÷ nights sold (cleaning fee excluded).</p>
+        <div class="chart" id="chAdr"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <h3>Net revenue by channel</h3>
+      <p class="question">Which channels bring the most net revenue after fees?</p>
+      <div class="chart" id="chChannel"></div>
+    </div>
+
+    <div class="section-head"><span class="num">3</span><h2>Financing and partners</h2><span class="sub">Can the operation pay its loan, and who is owed what?</span></div>
+    <div class="grid-2" style="margin-top:0;">
+      <div class="card">
+        <h3>Construction loan</h3>
+        <p class="question" id="loanQuestion">Chalet A financing.</p>
+        <div id="loanBox"></div>
+      </div>
+      <div class="card">
+        <h3>Debt service coverage by month</h3>
+        <p class="question">NOI ÷ loan installment. Target line at 1.2×.</p>
+        <div class="chart" id="chDscr"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <h3>Partner balances</h3>
+      <p class="question">Who has put in and taken out how much? Company level, not affected by the unit filter.</p>
+      <div class="table-scroll"><table id="partnerTable"></table></div>
+    </div>
+
+    <details class="card" style="margin-top:16px;">
+      <summary>Table view — monthly financial data</summary>
+      <div class="table-scroll"><table id="finTable"></table></div>
+    </details>
+  </section>
+
+  <!-- ======================= GUEST EXPERIENCE ======================= -->
+  <section id="view-guest" hidden>
+    <div class="kpi-grid" id="guestKpis"></div>
+
+    <div class="section-head"><span class="num">1</span><h2>Satisfaction</h2><span class="sub">Where do guests rate us lower, and what do they talk about?</span></div>
+    <div class="grid-2" style="margin-top:0;">
+      <div class="card">
+        <h3>Average sub-scores</h3>
+        <p class="question">Scale 1–5, axis zoomed to 4–5 to show the gaps.</p>
+        <div class="chart" id="chSub"></div>
+      </div>
+      <div class="card">
+        <h3>Most frequent review themes</h3>
+        <p class="question">Share of reviews that mention each topic.</p>
+        <div class="chart" id="chThemes"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <h3>Average overall rating by quarter</h3>
+      <p class="question">By quarter of the stay. Axis zoomed to 4–5. Hover a point for the number of reviews behind it.</p>
+      <div class="chart" id="chRatingQ"></div>
+    </div>
+
+    <div class="section-head"><span class="num">2</span><h2>Booking behaviour</h2><span class="sub">Who books, when they arrive and how far ahead</span></div>
+    <div class="grid-2" style="margin-top:0;">
+      <div class="card">
+        <h3>Check-ins by weekday</h3>
+        <p class="question">Completed stays. Drives cleaning schedules.</p>
+        <div class="chart" id="chWeekday"></div>
+      </div>
+      <div class="card">
+        <h3>Guest home state</h3>
+        <p class="question">Completed stays. Informs where to advertise.</p>
+        <div class="chart" id="chOrigin"></div>
+      </div>
+    </div>
+
+    <details class="card" style="margin-top:16px;">
+      <summary>Table view — quarterly guest experience data</summary>
+      <div class="table-scroll"><table id="guestTable"></table></div>
+    </details>
+  </section>
+
+  <p class="footnote" style="text-align:center; margin-top:34px;">KPI formulas: docs/kpi-definitions.md · Data model: docs/data-dictionary.md · Built with Python (standard library) and vanilla HTML, CSS and JavaScript.</p>
+</main>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+/* ---------------- formatting ---------------- */
+const brl0 = new Intl.NumberFormat('en-US',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const brl2 = new Intl.NumberFormat('en-US',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtBRL = v => brl0.format(v);
+const fmtBRLk = v => Math.abs(v) >= 1000 ? 'R$' + (v/1000).toFixed(v % 1000 === 0 ? 0 : 1).replace(/\.0$/,'') + 'k' : brl0.format(v);
+const fmtPct = (v, d=0) => (v*100).toFixed(d) + '%';
+const fmtNum = (v, d=1) => v.toFixed(d);
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ymLabel = ym => MONTHS[+ym.slice(5,7)-1] + ' ' + ym.slice(2,4);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const sum = a => a.reduce((x,y)=>x+y,0);
+const mean = a => a.length ? sum(a)/a.length : 0;
+const median = a => { if(!a.length) return 0; const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; };
+const daysIn = ym => new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate();
+const addDays = (iso, n) => { const d = new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+const UNIT_LABEL = {CABIN:'Cabin', CHALET_A:'Chalet A'};
+const C = {s1:'#BF881E', s2:'#449ECD', s3:'#E06D51', grid:'rgba(239,230,211,0.09)', axis:'rgba(239,230,211,0.28)', ink2:'#C9C0AC', ink3:'#9FA893', surface:'#2B4436'};
+
+/* ---------------- static facts ---------------- */
+const allMonths = [...new Set(DATA.costs.map(c=>c.month.slice(0,7)))].sort();
+const unitOpens = {};
+DATA.costs.forEach(c => { const m=c.month.slice(0,7); if(!unitOpens[c.unit] || m < unitOpens[c.unit]) unitOpens[c.unit]=m; });
+const units = Object.keys(unitOpens).sort((a,b)=>unitOpens[a].localeCompare(unitOpens[b]));
+document.getElementById('periodLabel').textContent = ymLabel(allMonths[0]) + ' — ' + ymLabel(allMonths[allMonths.length-1]);
+
+/* ---------------- tooltip ---------------- */
+const tip = document.getElementById('tip');
+function showTip(e, html){
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if(x + w > window.innerWidth - 8) x = e.clientX - w - pad;
+  if(y + h > window.innerHeight - 8) y = e.clientY - h - pad;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+document.addEventListener('mousemove', e => {
+  const t = e.target.closest && e.target.closest('[data-tip]');
+  if(t) showTip(e, t.getAttribute('data-tip')); else tip.style.opacity = 0;
+});
+const tipHtml = (title, rows) => `<div class='t'>${esc(title)}</div>` + rows.map(([k,v])=>`<div class='r'><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('');
+
+/* ---------------- chart primitives ---------------- */
+const chartW = el => Math.max(300, Math.round(el.clientWidth || 920));
+const labelEvery = gw => Math.max(1, Math.ceil(50 / gw));
+// bar with 4px rounded data-end and square baseline end
+function barPath(x, yTop, w, yBase){
+  const h = yBase - yTop; if(h <= 0.5) return '';
+  const r = Math.min(4, w/2, h);
+  return `M${x},${yBase} L${x},${yTop+r} Q${x},${yTop} ${x+r},${yTop} L${x+w-r},${yTop} Q${x+w},${yTop} ${x+w},${yTop+r} L${x+w},${yBase} Z`;
+}
+function niceMax(v){
+  if(v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p;
+  const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return step * p;
+}
+function yAxis({W, padL, padR, padT, plotH, min, max, ticks, fmt}){
+  let s = '';
+  for(let i=0;i<=ticks;i++){
+    const v = min + (max-min)*i/ticks, y = padT + plotH - (v-min)/(max-min)*plotH;
+    s += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${C.grid}"/>`;
+    s += `<text x="${padL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="${C.ink3}" font-family="IBM Plex Mono, monospace">${fmt(v)}</text>`;
+  }
+  return s;
+}
+function xLabels(labels, xOf, y, every){
+  return labels.map((l,i)=> i % every === 0 ? `<text x="${xOf(i)}" y="${y}" text-anchor="middle" font-size="11" fill="${C.ink2}">${esc(l)}</text>` : '').join('');
+}
+
+// grouped vertical bars, one y-axis
+function columnChart(el, {labels, series, fmtAxis, fmtTip, height=280, tipTitle}){
+  const W=chartW(el), H=height, padL=62, padR=12, padT=12, padB=30, plotW=W-padL-padR, plotH=H-padT-padB;
+  const max = niceMax((Math.max(...series.flatMap(s=>s.values)) || 1) * 1.05);
+  const n = labels.length, gw = plotW/n, k = series.length;
+  const bw = Math.min(26, (gw*0.72 - (k-1)*2)/k);
+  const yOf = v => padT + plotH - v/max*plotH, base = yOf(0);
+  let marks = '', hits = '';
+  labels.forEach((l,i)=>{
+    const gx = padL + gw*i, cx = gx + gw/2, total = k*bw + (k-1)*2;
+    series.forEach((s,j)=>{
+      const x = cx - total/2 + j*(bw+2);
+      marks += `<path d="${barPath(x, yOf(s.values[i]), bw, base)}" fill="${s.color}"/>`;
+    });
+    const rows = series.map(s=>[s.name, fmtTip(s.values[i])]);
+    hits += `<rect x="${gx}" y="${padT}" width="${gw}" height="${plotH}" fill="transparent" data-tip="${esc(tipHtml(tipTitle ? tipTitle(i) : l, rows))}"/>`;
+  });
+  const every = labelEvery(gw);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(s=>s.name).join(' and '))} by period">
+    ${yAxis({W,padL,padR,padT,plotH,min:0,max,ticks:4,fmt:fmtAxis})}
+    <line x1="${padL}" y1="${base}" x2="${W-padR}" y2="${base}" stroke="${C.axis}"/>
+    ${marks}${xLabels(labels, i=>padL+gw*i+gw/2, H-8, every)}${hits}</svg>`;
+}
+
+// single line, one y-axis, optional reference line
+function lineChart(el, {labels, values, color=C.s1, min=0, max, ticks=4, fmtAxis, fmtTip, height=230, ref, refLabel, extra}){
+  const W=chartW(el), H=height, padL=62, padR=16, padT=14, padB=30, plotW=W-padL-padR, plotH=H-padT-padB;
+  const valid = values.filter(v=>v!=null);
+  if(!valid.length){ el.innerHTML = `<p class="empty">No data for this selection.</p>`; return; }
+  const mx = max ?? niceMax(Math.max(...valid) * 1.1);
+  const n = labels.length, step = plotW / Math.max(1, n-1);
+  const xOf = i => n === 1 ? padL + plotW/2 : padL + step*i;
+  const yOf = v => padT + plotH - (Math.max(min, Math.min(mx, v))-min)/(mx-min)*plotH;
+  let d = '', pen = false, dots = '', hits = '';
+  values.forEach((v,i)=>{
+    if(v == null){ pen = false; return; }
+    d += (pen ? 'L' : 'M') + xOf(i).toFixed(1) + ',' + yOf(v).toFixed(1) + ' '; pen = true;
+    dots += `<circle cx="${xOf(i)}" cy="${yOf(v)}" r="4.5" fill="${color}" stroke="${C.surface}" stroke-width="2"/>`;
+  });
+  const hw = n === 1 ? plotW : step;
+  values.forEach((v,i)=>{
+    const rows = v == null ? [['', 'no data']] : [[fmtTip.name || 'Value', fmtTip(v)], ...(extra ? extra(i) : [])];
+    hits += `<rect x="${xOf(i)-hw/2}" y="${padT}" width="${hw}" height="${plotH}" fill="transparent" data-tip="${esc(tipHtml(labels[i], rows))}"/>`;
+  });
+  let refLine = '';
+  if(ref != null && ref >= min && ref <= mx){
+    const y = yOf(ref);
+    refLine = `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${C.ink2}" stroke-dasharray="5 4"/>
+      <text x="${W-padR}" y="${y-6}" text-anchor="end" font-size="11" fill="${C.ink2}">${esc(refLabel)}</text>`;
+  }
+  const every = labelEvery(n === 1 ? plotW : step);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Line chart">
+    ${yAxis({W,padL,padR,padT,plotH,min,max:mx,ticks,fmt:fmtAxis})}
+    ${refLine}<path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${xLabels(labels, xOf, H-8, every)}${hits}</svg>`;
+}
+
+// horizontal bars (or dots when a zoomed domain is given)
+function hBars(el, {items, color=C.s1, fmt, domain, dot=false}){
+  if(!items.length){ el.innerHTML = `<p class="empty">No data for this selection.</p>`; return; }
+  const W=chartW(el), rowH=34, padL=Math.round(Math.min(170, W*0.3)), padR=Math.round(Math.min(110, W*0.24)), H=items.length*rowH + 6;
+  const [lo, hi] = domain || [0, Math.max(...items.map(d=>d.value)) || 1];
+  const xOf = v => padL + (Math.max(lo, Math.min(hi, v)) - lo)/(hi-lo)*(W-padL-padR);
+  let s = '';
+  items.forEach((d,i)=>{
+    const y = i*rowH + 4, cy = y + rowH/2 - 3;
+    s += `<text x="${padL-12}" y="${cy+4}" text-anchor="end" font-size="13" fill="${C.ink2}">${esc(d.label)}</text>`;
+    s += `<rect x="${padL}" y="${cy-5}" width="${W-padL-padR}" height="10" rx="5" fill="rgba(22,36,28,.55)"/>`;
+    if(dot) s += `<circle cx="${xOf(d.value)}" cy="${cy}" r="7" fill="${color}" stroke="${C.surface}" stroke-width="2"/>`;
+    else s += `<path d="M${padL},${cy-5} L${xOf(d.value)-4},${cy-5} Q${xOf(d.value)},${cy-5} ${xOf(d.value)},${cy-1} L${xOf(d.value)},${cy+1} Q${xOf(d.value)},${cy+5} ${xOf(d.value)-4},${cy+5} L${padL},${cy+5} Z" fill="${color}"/>`;
+    s += `<text x="${W-padR+12}" y="${cy+4}" font-size="12.5" fill="#EFE6D3" font-family="IBM Plex Mono, monospace">${esc(fmt(d.value))}</text>`;
+    s += `<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent" data-tip="${esc(tipHtml(d.label, d.tip || [['Value', fmt(d.value)]]))}"/>`;
+  });
+  if(domain){
+    s += `<text x="${padL}" y="${H}" font-size="10.5" fill="${C.ink3}" font-family="IBM Plex Mono, monospace">${lo}</text>`;
+    s += `<text x="${W-padR}" y="${H}" text-anchor="end" font-size="10.5" fill="${C.ink3}" font-family="IBM Plex Mono, monospace">${hi}</text>`;
+  }
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H + (domain?10:0)}" role="img" aria-label="Bar chart">${s}</svg>`;
+}
+
+const kpiCard = k => `<div class="kpi"><div class="label">${esc(k.label)}</div><div class="value">${esc(k.value)}</div><div class="sub">${esc(k.sub)}</div></div>`;
+
+/* ---------------- metrics ---------------- */
+function compute(unit){
+  const inUnit = r => unit === 'ALL' || r.unit === unit;
+  const bookings = DATA.bookings.filter(inUnit);
+  const done = bookings.filter(b=>b.status==='completed');
+  const costs = DATA.costs.filter(inUnit);
+  const reviews = DATA.reviews.filter(inUnit);
+  const unitList = unit === 'ALL' ? units : [unit];
+  const months = allMonths.filter(m => unitList.some(u => m >= unitOpens[u]));
+
+  const M = Object.fromEntries(months.map(m => [m, {net:0, lodging:0, nightsByCheckIn:0, nightsSold:0, avail:0, cost:0, stays:0}]));
+  months.forEach(m => unitList.forEach(u => { if(m >= unitOpens[u]) M[m].avail += daysIn(m); }));
+  done.forEach(b => {
+    const m = b.check_in.slice(0,7);
+    if(M[m]){ M[m].net += b.net_revenue; M[m].lodging += b.gross_revenue - b.cleaning_fee; M[m].nightsByCheckIn += b.nights; M[m].stays++; }
+    for(let i=0;i<b.nights;i++){ const nm = addDays(b.check_in, i).slice(0,7); if(M[nm]) M[nm].nightsSold++; }
+  });
+  costs.forEach(c => { const m=c.month.slice(0,7); if(M[m]) M[m].cost += c.amount; });
+  months.forEach(m => { const r=M[m]; r.noi = r.net - r.cost; r.margin = r.net > 0 ? r.noi/r.net : null;
+    r.occ = r.avail ? r.nightsSold/r.avail : 0; r.adr = r.nightsByCheckIn ? r.lodging/r.nightsByCheckIn : null; });
+
+  const T = {
+    net: sum(done.map(b=>b.net_revenue)), lodging: sum(done.map(b=>b.gross_revenue-b.cleaning_fee)),
+    nights: sum(done.map(b=>b.nights)), avail: sum(months.map(m=>M[m].avail)), cost: sum(costs.map(c=>c.amount)),
+  };
+  T.noi = T.net - T.cost; T.margin = T.net ? T.noi/T.net : 0;
+  T.occ = T.avail ? sum(months.map(m=>M[m].nightsSold))/T.avail : 0;
+  T.adr = T.nights ? T.lodging/T.nights : 0; T.revpar = T.avail ? T.lodging/T.avail : 0;
+  T.cpon = T.nights ? T.cost/T.nights : 0;
+
+  // channels
+  const ch = {};
+  done.forEach(b => { ch[b.channel] ??= {net:0, fee:0, stays:0}; ch[b.channel].net += b.net_revenue; ch[b.channel].fee += b.platform_fee; ch[b.channel].stays++; });
+  // cost categories
+  const cat = {};
+  costs.forEach(c => cat[c.category] = (cat[c.category]||0) + c.amount);
+
+  // financing (only units with a loan in scope)
+  const fin = DATA.financing.filter(f => unit === 'ALL' || f.unit === unit);
+  let loan = null;
+  if(fin.length){
+    const first = fin[0], last = fin[fin.length-1];
+    const principal = first.balance + first.principal;
+    const dscr = fin.map(f => { const m=f.month.slice(0,7);
+      const noiScope = unit === 'ALL' ? (M[m] ? M[m].noi : 0) : (M[m] ? M[m].noi : 0);
+      return {month:m, payment:f.payment, noi:noiScope, dscr: noiScope / f.payment}; });
+    loan = {unit:first.unit, principal, balance:last.balance, paid: principal - last.balance, installment:first.payment,
+      count: fin.length, interest: sum(fin.map(f=>f.interest)), dscr,
+      dscrTotal: sum(dscr.map(d=>d.noi)) / sum(dscr.map(d=>d.payment))};
+  }
+
+  // guest experience
+  const subKeys = ['cleanliness','accuracy','check_in','communication','location','value'];
+  const G = {
+    rating: mean(reviews.map(r=>r.overall)),
+    fiveShare: reviews.length ? reviews.filter(r=>r.overall===5).length/reviews.length : 0,
+    reviewRate: done.length ? reviews.length/done.length : 0,
+    response: median(reviews.map(r=>r.host_response_minutes)),
+    returning: done.length ? done.filter(b=>b.returning_guest).length/done.length : 0,
+    cancel: bookings.length ? bookings.filter(b=>b.status==='cancelled').length/bookings.length : 0,
+    lead: mean(done.map(b => (new Date(b.check_in) - new Date(b.booking_date))/864e5)),
+    los: mean(done.map(b=>b.nights)),
+    reviews: reviews.length, stays: done.length,
+    sub: subKeys.map(k => ({key:k, value: mean(reviews.map(r=>r[k]))})),
+  };
+  const themes = {};
+  reviews.forEach(r => r.themes.split(';').forEach(t => themes[t] = (themes[t]||0)+1));
+  G.themes = Object.entries(themes).map(([t,c])=>({theme:t, count:c, share: c/reviews.length})).sort((a,b)=>b.count-a.count);
+  const qOf = iso => iso.slice(0,4) + ' Q' + (Math.floor((+iso.slice(5,7)-1)/3)+1);
+  const Q = {};
+  const coOf = Object.fromEntries(DATA.bookings.map(b=>[b.booking_id, b.check_out]));
+  reviews.forEach(r => { const q = qOf(coOf[r.booking_id] || r.review_date); (Q[q] ??= []).push(r.overall); });
+  const stayQ = {}; done.forEach(b => { const q = qOf(b.check_out); stayQ[q] = (stayQ[q]||0)+1; });
+  G.quarters = Object.keys(Q).sort().map(q => ({q, rating: mean(Q[q]), n: Q[q].length, five: Q[q].filter(v=>v===5).length/Q[q].length, stays: stayQ[q]||0}));
+  const wd = [0,0,0,0,0,0,0];
+  done.forEach(b => wd[new Date(b.check_in+'T00:00:00Z').getUTCDay()]++);
+  G.weekday = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i)=>({label:d, value: wd[(i+1)%7]}));
+  const org = {}; done.forEach(b => org[b.origin_state] = (org[b.origin_state]||0)+1);
+  G.origin = Object.entries(org).map(([k,v])=>({label: k === 'Other' ? 'Other states' : k, value:v})).sort((a,b)=>b.value-a.value);
+
+  return {months, M, T, ch, cat, loan, G};
+}
+
+/* ---------------- render ---------------- */
+const CAT_LABEL = {utilities:'Utilities', internet:'Internet', maintenance:'Maintenance', supplies:'Supplies', insurance_and_taxes:'Insurance & taxes', cleaning:'Cleaning', laundry:'Laundry'};
+const SUB_LABEL = {cleanliness:'Cleanliness', accuracy:'Accuracy', check_in:'Check-in', communication:'Communication', location:'Location', value:'Value'};
+
+function renderFinancial(R, unit){
+  const {months, M, T, ch, cat, loan} = R, labels = months.map(ymLabel);
+  const scope = unit === 'ALL' ? 'All units' : UNIT_LABEL[unit];
+  document.getElementById('finKpis').innerHTML = [
+    {label:'Net revenue', value:fmtBRL(T.net), sub:`${scope} · after channel fees`},
+    {label:'Net operating income', value:fmtBRL(T.noi), sub:`NOI margin ${fmtPct(T.margin)}`},
+    {label:'Occupancy rate', value:fmtPct(T.occ), sub:`${T.nights} nights sold of ${T.avail} available`},
+    {label:'ADR · RevPAR', value:`${fmtBRL(T.adr)} · ${fmtBRL(T.revpar)}`, sub:'Lodging revenue per night sold · per night available'},
+    {label:'Debt service coverage', value: loan ? fmtNum(loan.dscrTotal,2)+'×' : 'n/a', sub: loan ? `Since first installment · target 1.2×` : 'No loan on this unit'},
+    {label:'Cost per occupied night', value:fmtBRL(T.cpon), sub:'Operating costs ÷ nights sold'},
+    {label:'Operating costs', value:fmtBRL(T.cost), sub:'Fixed + per-stay costs, excl. loan'},
+    {label:'Best month (NOI)', value: (()=>{const b=months.reduce((a,m)=>M[m].noi>M[a].noi?m:a, months[0]); return ymLabel(b);})(), sub: (()=>{const b=months.reduce((a,m)=>M[m].noi>M[a].noi?m:a, months[0]); return 'NOI '+fmtBRL(M[b].noi);})()},
+  ].map(kpiCard).join('');
+
+  columnChart(document.getElementById('chRevCost'), {labels, fmtAxis:fmtBRLk, fmtTip:fmtBRL,
+    series:[{name:'Net revenue', color:C.s1, values:months.map(m=>M[m].net)}, {name:'Operating costs', color:C.s3, values:months.map(m=>M[m].cost)}],
+    tipTitle: i => labels[i] + ' · NOI ' + fmtBRL(M[months[i]].noi)});
+  const marginFmt = v => fmtPct(v); marginFmt.name = 'NOI margin';
+  const margins = months.map(m=>M[m].margin);
+  const mMin = Math.min(0, Math.floor(Math.min(...margins.filter(v=>v!=null))*4)/4);
+  lineChart(document.getElementById('chMargin'), {labels, values:margins, min: mMin, max:1, ticks: Math.round((1-mMin)/0.25),
+    fmtAxis:v=>fmtPct(v), fmtTip:marginFmt, ref:0, refLabel:'break-even', extra:i=>[['NOI', fmtBRL(M[months[i]].noi)]]});
+  hBars(document.getElementById('chCostCat'), {color:C.s3, fmt:fmtBRL,
+    items:Object.entries(cat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:CAT_LABEL[k]||k, value:v, tip:[['Total', fmtBRL(v)], ['Share of costs', fmtPct(v/T.cost,1)]]}))});
+
+  const occFmt = v => fmtPct(v); occFmt.name = 'Occupancy';
+  columnChart(document.getElementById('chOcc'), {labels, fmtAxis:v=>fmtPct(v), fmtTip:v=>fmtPct(v,1), height:240,
+    series:[{name:'Occupancy', color:C.s1, values:months.map(m=>M[m].occ)}],
+    tipTitle:i=>labels[i] + ` · ${M[months[i]].nightsSold}/${M[months[i]].avail} nights`});
+  const adrFmt = v => fmtBRL(v); adrFmt.name = 'ADR';
+  const adrs = months.map(m=>M[m].adr);
+  lineChart(document.getElementById('chAdr'), {labels, values:adrs, min:0, fmtAxis:fmtBRLk, fmtTip:adrFmt, height:240,
+    extra:i=>[['Nights (by check-in)', String(M[months[i]].nightsByCheckIn)]]});
+
+  const chItems = ['Airbnb','Direct','Booking'].filter(k=>ch[k]).map(k => ({label:k, value:ch[k].net,
+    tip:[['Net revenue', fmtBRL(ch[k].net)], ['Fees kept by channel', fmtBRL(ch[k].fee)], ['Stays', String(ch[k].stays)], ['Share of net revenue', fmtPct(ch[k].net/T.net,1)]]}));
+  hBars(document.getElementById('chChannel'), {color:C.s1, fmt:v=>`${fmtBRL(v)}`, items:chItems});
+
+  const lb = document.getElementById('loanBox');
+  if(loan){
+    document.getElementById('loanQuestion').textContent = `${UNIT_LABEL[loan.unit]} construction financing · ${loan.count} installments paid.`;
+    lb.innerHTML = `<div style="font-family:var(--mono); font-size:26px; font-weight:600;">${fmtPct(loan.paid/loan.principal,1)}</div>
+      <div class="muted" style="font-size:12.5px;">of principal repaid</div>
+      <div class="progress" role="img" aria-label="Principal repaid ${fmtPct(loan.paid/loan.principal,1)}"><div style="width:${Math.max(1.5, loan.paid/loan.principal*100)}%"></div></div>
+      <div class="row"><span>Principal</span><span>${fmtBRL(loan.principal)}</span></div>
+      <div class="row"><span>Outstanding balance</span><span>${fmtBRL(loan.balance)}</span></div>
+      <div class="row"><span>Monthly installment</span><span>${brl2.format(loan.installment)}</span></div>
+      <div class="row" style="border-bottom:1px solid var(--line);"><span>Interest paid so far</span><span>${fmtBRL(loan.interest)}</span></div>`;
+    const dFmt = v => fmtNum(v,2)+'×'; dFmt.name = 'Coverage';
+    const dv = loan.dscr.map(d=>d.dscr);
+    lineChart(document.getElementById('chDscr'), {labels:loan.dscr.map(d=>ymLabel(d.month)), values:dv,
+      min: 0, max: Math.max(2, Math.ceil(Math.max(...dv)/2)*2), ticks: Math.max(2, Math.ceil(Math.max(...dv)/2)), fmtAxis:v=>fmtNum(v,0)+'×', fmtTip:dFmt,
+      ref:1.2, refLabel:'target 1.2×', height:250, extra:i=>[['NOI', fmtBRL(loan.dscr[i].noi)], ['Installment', fmtBRL(loan.dscr[i].payment)]]});
+  } else {
+    document.getElementById('loanQuestion').textContent = 'No loan on this unit.';
+    lb.innerHTML = `<p class="empty">The Cabin has no financing. Select “All units” or “Chalet A”.</p>`;
+    document.getElementById('chDscr').innerHTML = `<p class="empty">Not applicable for this unit.</p>`;
+  }
+
+  const P = {};
+  DATA.partnerLedger.forEach(r => { P[r.partner] ??= {capital_contribution:0, expense_paid_on_behalf:0, distribution:0}; P[r.partner][r.type] += r.amount; });
+  const names = Object.keys(P).sort();
+  const bal = n => P[n].capital_contribution + P[n].expense_paid_on_behalf + P[n].distribution;
+  const diff = names.length === 2 ? bal(names[0]) - bal(names[1]) : 0;
+  document.getElementById('partnerTable').innerHTML = `<thead><tr><th>Partner</th><th class="num">Capital in</th><th class="num">Expenses paid</th><th class="num">Distributions</th><th class="num">Net position</th></tr></thead><tbody>` +
+    names.map(n => `<tr><td>${esc(n)}</td><td class="num">${fmtBRL(P[n].capital_contribution)}</td><td class="num">${fmtBRL(P[n].expense_paid_on_behalf)}</td><td class="num">${fmtBRL(-P[n].distribution)}</td><td class="num" style="font-weight:600;">${fmtBRL(bal(n))}</td></tr>`).join('') +
+    `</tbody>` + (names.length === 2 ? `<tfoot><tr><td colspan="5" class="muted" style="font-size:12px; padding-top:10px;">Settlement to equalize: ${esc(diff > 0 ? names[1] : names[0])} owes ${esc(diff > 0 ? names[0] : names[1])} ${fmtBRL(Math.abs(diff)/2)}.</td></tr></tfoot>` : '');
+
+  document.getElementById('finTable').innerHTML = `<thead><tr><th>Month</th><th class="num">Net revenue</th><th class="num">Costs</th><th class="num">NOI</th><th class="num">Occupancy</th><th class="num">ADR</th></tr></thead><tbody>` +
+    months.map(m => `<tr><td>${ymLabel(m)}</td><td class="num">${fmtBRL(M[m].net)}</td><td class="num">${fmtBRL(M[m].cost)}</td><td class="num">${fmtBRL(M[m].noi)}</td><td class="num">${fmtPct(M[m].occ,1)}</td><td class="num">${M[m].adr==null?'—':fmtBRL(M[m].adr)}</td></tr>`).join('') + `</tbody>`;
+}
+
+function renderGuest(R, unit){
+  const G = R.G, scope = unit === 'ALL' ? 'All units' : UNIT_LABEL[unit];
+  document.getElementById('guestKpis').innerHTML = [
+    {label:'Average rating', value:fmtNum(G.rating,2)+' / 5', sub:`${scope} · ${G.reviews} reviews`},
+    {label:'5-star reviews', value:fmtPct(G.fiveShare), sub:'Share of reviews rated 5'},
+    {label:'Review rate', value:fmtPct(G.reviewRate), sub:`${G.reviews} reviews from ${G.stays} completed stays`},
+    {label:'Median host response', value:fmtNum(G.response,0)+' min', sub:'During the stay'},
+    {label:'Returning guests', value:fmtPct(G.returning), sub:'Share of completed stays'},
+    {label:'Cancellation rate', value:fmtPct(G.cancel,1), sub:'Cancelled ÷ all bookings'},
+    {label:'Lead time', value:fmtNum(G.lead,0)+' days', sub:'Booking to check-in, average'},
+    {label:'Length of stay', value:fmtNum(G.los,1)+' nights', sub:'Average per completed stay'},
+  ].map(kpiCard).join('');
+
+  hBars(document.getElementById('chSub'), {color:C.s2, dot:true, domain:[4,5], fmt:v=>fmtNum(v,2),
+    items:[...G.sub].sort((a,b)=>a.value-b.value).map(s=>({label:SUB_LABEL[s.key], value:s.value}))});
+  hBars(document.getElementById('chThemes'), {color:C.s2, fmt:v=>fmtPct(v),
+    items:G.themes.map(t=>({label:t.theme[0].toUpperCase()+t.theme.slice(1), value:t.share, tip:[['Reviews mentioning', String(t.count)], ['Share', fmtPct(t.share,1)]]}))});
+  const rFmt = v => fmtNum(v,2); rFmt.name = 'Average rating';
+  lineChart(document.getElementById('chRatingQ'), {labels:G.quarters.map(q=>q.q), values:G.quarters.map(q=>q.rating), color:C.s2, min:4, max:5,
+    fmtAxis:v=>fmtNum(v,2), fmtTip:rFmt, height:230, extra:i=>[['Reviews', String(G.quarters[i].n)], ['5-star share', fmtPct(G.quarters[i].five)]]});
+  hBars(document.getElementById('chWeekday'), {color:C.s2, fmt:v=>String(v), items:G.weekday.map(d=>({label:d.label, value:d.value, tip:[['Check-ins', String(d.value)]]}))});
+  hBars(document.getElementById('chOrigin'), {color:C.s2, fmt:v=>String(v), items:G.origin.map(d=>({label:d.label, value:d.value, tip:[['Stays', String(d.value)], ['Share', fmtPct(d.value/G.stays,1)]]}))});
+
+  document.getElementById('guestTable').innerHTML = `<thead><tr><th>Quarter</th><th class="num">Stays (check-out)</th><th class="num">Reviews</th><th class="num">Avg rating</th><th class="num">5-star share</th></tr></thead><tbody>` +
+    G.quarters.map(q=>`<tr><td>${q.q}</td><td class="num">${q.stays}</td><td class="num">${q.n}</td><td class="num">${fmtNum(q.rating,2)}</td><td class="num">${fmtPct(q.five)}</td></tr>`).join('') + `</tbody>`;
+}
+
+/* ---------------- state & controls ---------------- */
+const state = {unit:'ALL', view:'financial'};
+const uf = document.getElementById('unitFilter');
+uf.innerHTML = [['ALL','All units'], ...units.map(u=>[u, UNIT_LABEL[u]||u])].map(([v,l]) => `<button data-unit="${v}" aria-pressed="${v==='ALL'}">${l}</button>`).join('');
+uf.addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return; state.unit = b.dataset.unit;
+  uf.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); render(); });
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  state.view = b.dataset.view;
+  document.querySelectorAll('[data-view]').forEach(x => x.setAttribute('aria-selected', x === b));
+  document.getElementById('view-financial').hidden = state.view !== 'financial';
+  document.getElementById('view-guest').hidden = state.view !== 'guest';
+  try { history.replaceState(null, '', '#' + state.view); } catch(_) {}
+  render();
+}));
+function render(){ const R = compute(state.unit); renderFinancial(R, state.unit); renderGuest(R, state.unit); }
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 150); });
+render();
+if(location.hash === '#guest') document.querySelector('[data-view="guest"]').click();
+</script>
+</body>
+</html>
