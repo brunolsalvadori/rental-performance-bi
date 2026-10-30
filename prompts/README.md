@@ -22,9 +22,9 @@ This folder documents how I directed AI while building this BI product. Each fil
 
 | File | Step |
 |---|---|
-| 01-business-questions.md | Defining who uses the BI and which questions it must answer |
-| 02-data-model.md | Turning scattered spreadsheets into a data model |
-| 03-kpis.md | Defining each KPI and its formula |
-| 04-dashboard.md | Dashboard requirements and iterations |
+| [01-business-questions.md](01-business-questions.md) | Defining who uses the BI and which questions it must answer |
+| [02-data-model.md](02-data-model.md) | Turning scattered spreadsheets into a data model |
+| [03-kpis.md](03-kpis.md) | Defining each KPI and its formula |
+| [04-dashboard.md](04-dashboard.md) | Dashboard requirements and iterations |
 
-Files are added as each step is documented.
+Steps 01 to 03, and part 1 of step 04, are reconstructed from my project notes: their prompts are summarized, not quoted. Where a prompt is quoted, it is marked as such.
